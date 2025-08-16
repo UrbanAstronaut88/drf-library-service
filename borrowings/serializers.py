@@ -1,9 +1,7 @@
 from rest_framework import serializers
 from books.serializers import BookSerializer
 from borrowings.models import Borrowing
-from notifications.telegram import send_telegram_message
 from payments.models import Payment
-from payments.stripe_utils import create_stripe_session
 
 
 class BorrowingListSerializer(serializers.ModelSerializer):
@@ -23,7 +21,7 @@ class BorrowingListSerializer(serializers.ModelSerializer):
 class BorrowingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Borrowing
-        fields = ["book", "expected_return_date"]
+        fields = ["id", "book", "expected_return_date"]
 
     def validate(self, data):
         book = data["book"]
@@ -32,33 +30,16 @@ class BorrowingCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        book = validated_data["book"]
-        book.inventory -= 1
-        book.save()
-
-        user = self.context["request"].user
+        user = validated_data.pop("user")
         borrowing = Borrowing.objects.create(user=user, **validated_data)
 
-        # Create Payment immediately after Borrowing
-        money_to_pay = book.daily_fee
-        payment = Payment.objects.create(
+        book = validated_data["book"]
+        Payment.objects.create(
             borrowing=borrowing,
             user=user,
-            money_to_pay=money_to_pay,
+            money_to_pay=book.daily_fee,
             type=Payment.Type.PAYMENT,
+            status=Payment.Status.PENDING
         )
-
-        # Stripe Session Generation
-        create_stripe_session(payment, self.context["request"])
-
-        # --- Telegram Notification ---
-        message = (
-            f"📚 New Borrowing Created!\n\n"
-            f"👤 User: {user.email}\n"
-            f"📖 Book: {book.title}\n"
-            f"💵 Daily Fee: {book.daily_fee}$\n"
-            f"📅 Expected Return: {borrowing.expected_return_date}"
-        )
-        send_telegram_message(message)
 
         return borrowing
