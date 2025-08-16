@@ -30,7 +30,7 @@
 
 ### 1. Clone the project
 ```bash
-git clone https://github.com/your-username/drf-library-service.git
+git clone https://github.com/UrbanAstronaut88/drf-library-service.git
 cd drf-library-service
 ```
 ### 2. Create .env from .env.sample
