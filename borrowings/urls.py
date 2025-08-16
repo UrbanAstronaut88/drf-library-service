@@ -1,0 +1,8 @@
+from rest_framework.routers import DefaultRouter
+
+from borrowings.views import BorrowingViewSet
+
+router = DefaultRouter()
+router.register(r"", BorrowingViewSet, basename="borrowing")
+
+urlpatterns = router.urls
